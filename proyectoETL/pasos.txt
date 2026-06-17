@@ -1,0 +1,22 @@
+
+
+-----------taller: hacer herramienta CS_etl_py
+
+
+python -m venv venv
+venv\Scripts\Activate.ps1
+
+cd .\CS_etl_py\
+pip install -r requirements.txt
+
+pip install psycopg2
+pip install psycopg2-binary
+
+
+###repeated indexes
+dim_persona.reset_index(drop=True, inplace=True)
+
+
+"C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" -U postgres -d fast_and_safe -s > "Gambe\Desktop\schema.sql"
+
+
