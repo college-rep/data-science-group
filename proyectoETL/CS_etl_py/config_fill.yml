@@ -1,6 +1,6 @@
 CO_SA:
   drivername: postgresql
-  dbname: fast_and_safe
+  dbname: fast_and_safe_OLTP
   user: postgres
   password: postgres
   host: localhost
@@ -14,8 +14,6 @@ ETL_PRO:
   host: localhost
   port: 5432
 
-LOAD_DIMENSIONS:
-  True
+LOAD_DIMENSIONS: True
 
-medicamentos:
-  sources/medicamentos.xls
+medicamentos: sources/medicamentos.xls
