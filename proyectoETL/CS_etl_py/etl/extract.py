@@ -133,6 +133,62 @@ def extract_servicios(conectionn):
     df_servicios = pd.read_sql_table('servicios_pos', conectionn)
     return df_servicios
 
+# Agregar estas 3 funciones al FINAL del archivo existente:
+# proyectoETL/CS_etl_py/etl/extract.py
+# (no se toca nada de lo que ya esta ahi)
+
+# ============================================================
+# NUEVO -- dimensiones del proyecto de mensajeria (Fast and Safe)
+# ============================================================
+
+def extract_estado(conexion: Engine):
+    """
+    Extrae el catalogo de estados del servicio (dimension Estado).
+    Fuente: mensajeria_estado (id, nombre, descripcion)
+    """
+    dim_estado = pd.read_sql_table('mensajeria_estado', conexion)
+    return dim_estado
+
+
+def extract_sede(conexion: Engine):
+    """
+    Extrae las sedes con su ciudad y departamento (dimension Sede).
+    sede no trae el nombre del departamento directo, se necesita el join
+    sede -> ciudad -> departamento.
+    """
+    dim_sede = pd.read_sql_query('''
+        SELECT
+            s.sede_id,
+            s.nombre          AS nombre_sede,
+            s.direccion,
+            s.telefono,
+            s.nombre_contacto,
+            c.nombre          AS ciudad,
+            d.nombre          AS departamento,
+            s.cliente_id
+        FROM sede s
+        LEFT JOIN ciudad c ON s.ciudad_id = c.ciudad_id
+        LEFT JOIN departamento d ON c.departamento_id = d.departamento_id
+    ''', conexion)
+    return dim_sede
+
+
+def extract_tipo_servicio(conexion: Engine):
+    """
+    Extrae los valores distintos de prioridad usados en mensajeria_servicio.
+    Esta es la fuente REAL de la dimension Tipo_Servicio (clasificacion por
+    tiempo de entrega: urgente/media/baja), NO la tabla mensajeria_tiposervicio
+    (que es tipo de carga/documento, un concepto distinto).
+    """
+    prioridades = pd.read_sql_query('''
+        SELECT prioridad, count(*) as n
+        FROM mensajeria_servicio
+        WHERE prioridad IS NOT NULL AND trim(prioridad) <> ''
+        GROUP BY prioridad
+        ORDER BY n DESC
+    ''', conexion)
+    return prioridades
+
 
 
 

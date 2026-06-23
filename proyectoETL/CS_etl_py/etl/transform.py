@@ -246,3 +246,107 @@ def transform_remisiones(args) -> DataFrame:
                                    'costo']]
     return df_remisiones
 
+# Agregar estas 5 funciones al FINAL del archivo existente:
+# proyectoETL/CS_etl_py/etl/transform.py
+# (no se toca nada de lo que ya esta ahi)
+
+def transform_fecha_mensajeria() -> DataFrame:
+    """
+    NOTA DE NOMBRE: se llama 'transform_fecha_mensajeria' (no 'transform_fecha')
+    porque ya existe una funcion transform_fecha() en este archivo para el
+    proyecto medico (rango 2005-2009, plantilla de clase). Cuando el equipo
+    confirme que ese codigo medico ya no se usa, se puede borrar y renombrar
+    esta funcion a transform_fecha() sin el sufijo.
+    """
+    dim_fecha = pd.DataFrame({"fecha_completa": pd.date_range(start='1/1/2023', end='12/31/2026', freq='D')})
+    dim_fecha["ano"] = dim_fecha["fecha_completa"].dt.year
+    dim_fecha["mes"] = dim_fecha["fecha_completa"].dt.month
+    dim_fecha["dia"] = dim_fecha["fecha_completa"].dt.day
+    dim_fecha["weekday"] = dim_fecha["fecha_completa"].dt.weekday
+    dim_fecha["quarter"] = dim_fecha["fecha_completa"].dt.quarter
+    dim_fecha["day_of_year"] = dim_fecha["fecha_completa"].dt.day_of_year
+    dim_fecha["day_of_month"] = dim_fecha["fecha_completa"].dt.days_in_month
+    dim_fecha["nombre_mes"] = dim_fecha["fecha_completa"].dt.month_name()
+    dim_fecha["nombre_dia"] = dim_fecha["fecha_completa"].dt.day_name()
+    dim_fecha["date_str"] = dim_fecha["fecha_completa"].dt.strftime("%d/%m/%Y")
+    co_holidays = holidays.CO(language="es")
+    dim_fecha["is_Holiday"] = dim_fecha["fecha_completa"].apply(lambda x: x in co_holidays)
+    dim_fecha["holiday"] = dim_fecha["fecha_completa"].apply(lambda x: co_holidays.get(x))
+    dim_fecha["weekend"] = dim_fecha["weekday"].apply(lambda x: x > 4)
+    dim_fecha["saved"] = date.today()
+    return dim_fecha
+
+
+def transform_hora() -> DataFrame:
+    dim_hora = pd.DataFrame({"minute_of_day": range(24 * 60)})
+    dim_hora["hora"] = dim_hora["minute_of_day"] // 60
+    dim_hora["minuto"] = dim_hora["minute_of_day"] % 60
+    dim_hora["hour_12"] = dim_hora["hora"].apply(lambda h: 12 if h % 12 == 0 else h % 12)
+    dim_hora["meridiem"] = dim_hora["hora"].apply(lambda h: "AM" if h < 12 else "PM")
+    dim_hora["time_str"] = dim_hora.apply(lambda r: f"{r['hora']:02d}:{r['minuto']:02d}:00", axis=1)
+    dim_hora["time_12_str"] = dim_hora.apply(
+        lambda r: f"{r['hour_12']:02d}:{r['minuto']:02d} {r['meridiem']}", axis=1
+    )
+
+    def franja_horaria(hour):
+        if 5 <= hour < 12:
+            return "Manana"
+        if 12 <= hour < 18:
+            return "Tarde"
+        return "Noche"
+
+    dim_hora["franja_horaria"] = dim_hora["hora"].apply(franja_horaria)
+    dim_hora["is_business_hour"] = dim_hora["hora"].between(8, 17)
+    dim_hora["saved"] = date.today()
+    return dim_hora
+
+
+def transform_estado(dim_estado: DataFrame) -> DataFrame:
+    dim_estado = dim_estado.drop(columns=['descripcion'])
+    orden_secuencia_map = {
+        'Iniciado': 1,
+        'Con mensajero Asignado': 2,
+        'Recogido por mensajero': 3,
+        'Entregado en destino': 4,
+        'Terminado completo': 5,
+        'Con novedad': None,
+    }
+    dim_estado['orden_secuencia'] = dim_estado['nombre'].map(orden_secuencia_map)
+    sin_mapear = dim_estado[~dim_estado['nombre'].isin(orden_secuencia_map.keys())]
+    if not sin_mapear.empty:
+        print('ATENCION: hay estados sin mapear en transform_estado:', sin_mapear['nombre'].tolist())
+    dim_estado = dim_estado.rename(columns={'nombre': 'nombre_estado'})
+    dim_estado['saved'] = date.today()
+    return dim_estado
+
+
+def transform_sede(dim_sede: DataFrame) -> DataFrame:
+    dim_sede = dim_sede.replace({np.nan: 'no aplica', ' ': 'no aplica', '': 'no_aplica'})
+    dim_sede['saved'] = date.today()
+    return dim_sede
+
+
+def transform_tipo_servicio(prioridades: DataFrame) -> DataFrame:
+    def normalizar_prioridad(valor):
+        return valor.split(':')[0].strip().lower()
+
+    prioridades = prioridades.copy()
+    prioridades['grupo'] = prioridades['prioridad'].apply(normalizar_prioridad)
+
+    grupos_esperados = {'alta', 'media', 'baja'}
+    grupos_encontrados = set(prioridades['grupo'].unique())
+    if grupos_encontrados - grupos_esperados:
+        print('ATENCION: grupos de prioridad no contemplados:', grupos_encontrados - grupos_esperados)
+
+    catalogo_tipo_servicio = {
+        'alta': {'nombre_tipo': 'Urgente (menos de 1 hora)',
+                 'descripcion': 'Entrega prioritaria inmediata. Tiempo objetivo de entrega menor a 60 minutos desde la solicitud.'},
+        'media': {'nombre_tipo': 'Media (1 a 3 horas)',
+                  'descripcion': 'Entrega en una ventana de 1 a 3 horas desde la solicitud.'},
+        'baja': {'nombre_tipo': 'Baja (transcurso del dia)',
+                 'descripcion': 'Entrega sin urgencia inmediata, dentro del transcurso del dia.'},
+    }
+    dim_tipo_servicio = pd.DataFrame([{'grupo': k, **v} for k, v in catalogo_tipo_servicio.items()])
+    dim_tipo_servicio['saved'] = date.today()
+    return dim_tipo_servicio
+
