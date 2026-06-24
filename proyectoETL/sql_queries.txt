@@ -2,3 +2,15 @@ SELECT DISTINCT nombre
 FROM mensajeria_estado;
 
 
+--select count(*) from mensajeria_servicio;--28430
+--select count(*) from mensajeria_novedadesservicio;--5208
+--select count(*) from mensajeria_documentoasociado;--7974
+--select count(*) from mensajeria_estadosservicio;--128402
+--select distinct descripcion from mensajeria_novedadesservicio;
+--select count(distinct id) from mensajeria_documentoasociado;--7974
+
+
+--select distinct nombre from mensajeria_estado;
+--select distinct nombre from mensajeria_tiponovedad;
+--select * from mensajeria_servicio;
+--select * from mensajeria_origenservicio;
