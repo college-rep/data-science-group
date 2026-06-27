@@ -7,3 +7,4 @@ test*
 *.pbix
 *.sql
 *.pyc
+*.dump
