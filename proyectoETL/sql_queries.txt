@@ -14,3 +14,46 @@ FROM mensajeria_estado;
 --select distinct nombre from mensajeria_tiponovedad;
 --select * from mensajeria_servicio;
 --select * from mensajeria_origenservicio;
+
+
+3) A que hora los mensajeros estan mas ocupados
+
+SELECT (id_hora / 60) AS hora_del_dia,
+       count(*)       AS eventos
+FROM hecho_seguimiento_fases
+GROUP BY hora_del_dia
+ORDER BY hora_del_dia;
+
+5) Mensajeros mas eficientes (los que mas servicios prestan)
+
+SELECT f.mensajero_id,
+       count(DISTINCT f.servicio_id) AS servicios
+FROM hecho_seguimiento_fases f
+WHERE f.mensajero_id IS NOT NULL
+GROUP BY f.mensajero_id
+ORDER BY servicios DESC;
+
+7) Tiempo promedio de entrega (solicitud -> cierre)
+
+
+SELECT round(avg(total_min)::numeric, 1)                                         AS promedio_min,
+       round(percentile_cont(0.5) WITHIN GROUP (ORDER BY total_min)::numeric, 1) AS mediana_min
+FROM (
+    SELECT servicio_id,
+           sum(tiempo_espera_min) AS total_min
+    FROM hecho_seguimiento_fases
+    GROUP BY servicio_id
+) t;
+
+
+
+8) Tiempos de espera por cada fase / en que fase hay mas demoras
+
+SELECT e.nombre_estado,
+       e.orden_secuencia,
+       round(avg(f.tiempo_espera_min)::numeric, 1) AS espera_promedio_min,
+       count(DISTINCT f.servicio_id)               AS servicios
+FROM hecho_seguimiento_fases f
+JOIN dim_estado e ON f.estado_id = e.id
+GROUP BY e.nombre_estado, e.orden_secuencia
+ORDER BY e.orden_secuencia;
