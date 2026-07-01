@@ -16,6 +16,22 @@ FROM mensajeria_estado;
 --select * from mensajeria_origenservicio;
 
 
+1)
+select dim_fecha.nombre_mes,count(*) from
+hecho_servicio join dim_fecha
+on hecho_servicio.fecha_solicitud = dim_fecha.fecha_completa
+GROUP BY dim_fecha.nombre_mes;
+ORDER BY COUNT(*) DESC;
+
+
+2)
+select dim_fecha.nombre_dia,count(*) from
+hecho_servicio join dim_fecha
+on hecho_servicio.fecha_solicitud = dim_fecha.fecha_completa
+GROUP BY dim_fecha.nombre_dia
+ORDER BY COUNT(*) DESC;
+
+
 3) A que hora los mensajeros estan mas ocupados
 
 SELECT (id_hora / 60) AS hora_del_dia,
@@ -23,6 +39,29 @@ SELECT (id_hora / 60) AS hora_del_dia,
 FROM hecho_seguimiento_fases
 GROUP BY hora_del_dia
 ORDER BY hora_del_dia;
+
+4)------------------PREGUNTA 4
+select dim_cliente.nombre_empresa,count(*) from
+hecho_servicio join dim_cliente
+on hecho_servicio.id_cliente = dim_cliente.id_cliente
+GROUP BY dim_cliente.nombre_empresa
+ORDER BY COUNT(*) DESC;
+
+SELECT
+    dc.nombre_empresa,
+    df.nombre_mes,
+    COUNT(*) AS total_solicitudes
+FROM hecho_servicio hs
+JOIN dim_cliente dc
+    ON hs.id_cliente = dc.id_cliente
+JOIN dim_fecha df
+    ON hs.fecha_solicitud = df.fecha_completa
+GROUP BY
+    dc.nombre_empresa,
+    df.nombre_mes
+ORDER BY
+    dc.nombre_empresa,
+    df.nombre_mes;
 
 5) Mensajeros mas eficientes (los que mas servicios prestan)
 
@@ -32,6 +71,13 @@ FROM hecho_seguimiento_fases f
 WHERE f.mensajero_id IS NOT NULL
 GROUP BY f.mensajero_id
 ORDER BY servicios DESC;
+
+6)------------------PREGUNTA 6
+select dim_sede.nombre_sede,count(*) from
+hecho_servicio join dim_sede
+on hecho_servicio.id_sede = dim_sede.sede_id
+GROUP BY dim_sede.nombre_sede
+ORDER BY COUNT(*) DESC;
 
 7) Tiempo promedio de entrega (solicitud -> cierre)
 
