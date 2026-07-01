@@ -103,3 +103,12 @@ FROM hecho_seguimiento_fases f
 JOIN dim_estado e ON f.estado_id = e.id
 GROUP BY e.nombre_estado, e.orden_secuencia
 ORDER BY e.orden_secuencia;
+
+9) Cuáles son las novedades que más se presentan durante la prestación del servicio?
+
+SELECT n.categoria_novedad,
+       sum(f.num_novedades) AS total_novedades
+FROM hecho_novedad f
+JOIN dim_novedad n ON f.tipo_novedad_id = n.id_novedad
+GROUP BY n.categoria_novedad
+ORDER BY total_novedades DESC;
