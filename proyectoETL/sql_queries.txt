@@ -32,11 +32,29 @@ GROUP BY dim_fecha.nombre_dia
 ORDER BY COUNT(*) DESC;
 
 
-3) A que hora los mensajeros estan mas ocupados
+3) A que hora los mensajeros estan mas ocupados (interpretado como las horas en que hay mas mensajeros con mas asignaciones)
 
-SELECT (id_hora / 60) AS hora_del_dia,
-       count(*)       AS eventos
-FROM hecho_seguimiento_fases
+WITH servicios_completos AS (
+    SELECT DISTINCT servicio_id
+    FROM hecho_seguimiento_fases f
+    JOIN dim_estado e ON f.estado_id = e.id
+    WHERE e.nombre_estado = 'Entregado en destino'
+),
+marcadas AS (
+    SELECT f.*,
+           row_number() OVER (
+               PARTITION BY f.servicio_id, f.estado_id
+               ORDER BY f.tiempo_espera_min NULLS LAST
+           ) AS rn
+    FROM hecho_seguimiento_fases f
+    WHERE f.servicio_id IN (SELECT servicio_id FROM servicios_completos)
+)
+SELECT (m.id_hora / 60) AS hora_del_dia,
+       count(*)         AS asignaciones
+FROM marcadas m
+JOIN dim_estado e ON m.estado_id = e.id
+WHERE m.rn = 1
+  AND e.nombre_estado = 'Con mensajero Asignado'
 GROUP BY hora_del_dia
 ORDER BY hora_del_dia;
 
@@ -63,15 +81,21 @@ ORDER BY
     dc.nombre_empresa,
     df.nombre_mes;
 
-5) Mensajeros mas eficientes (los que mas servicios prestan)
+5) Mensajeros mas eficientes (los que mas servicios completados prestan)
 
+WITH servicios_completos AS (
+    SELECT DISTINCT servicio_id
+    FROM hecho_seguimiento_fases f
+    JOIN dim_estado e ON f.estado_id = e.id
+    WHERE e.nombre_estado = 'Entregado en destino'
+)
 SELECT f.mensajero_id,
        count(DISTINCT f.servicio_id) AS servicios
 FROM hecho_seguimiento_fases f
 WHERE f.mensajero_id IS NOT NULL
+  AND f.servicio_id IN (SELECT servicio_id FROM servicios_completos)
 GROUP BY f.mensajero_id
 ORDER BY servicios DESC;
-
 6)------------------PREGUNTA 6
 select dim_sede.nombre_sede,count(*) from
 hecho_servicio join dim_sede
@@ -82,27 +106,63 @@ ORDER BY COUNT(*) DESC;
 7) Tiempo promedio de entrega (solicitud -> cierre)
 
 
-SELECT round(avg(total_min)::numeric, 1)                                         AS promedio_min,
-       round(percentile_cont(0.5) WITHIN GROUP (ORDER BY total_min)::numeric, 1) AS mediana_min
-FROM (
+WITH servicios_completos AS (
+    SELECT DISTINCT servicio_id
+    FROM hecho_seguimiento_fases f
+    JOIN dim_estado e ON f.estado_id = e.id
+    WHERE e.nombre_estado = 'Entregado en destino'
+),
+marcadas AS (
+    SELECT f.*,
+           row_number() OVER (
+               PARTITION BY f.servicio_id, f.estado_id
+               ORDER BY f.tiempo_espera_min NULLS LAST
+           ) AS rn
+    FROM hecho_seguimiento_fases f
+    WHERE f.servicio_id IN (SELECT servicio_id FROM servicios_completos)
+),
+tiempo_por_servicio AS (
     SELECT servicio_id,
            sum(tiempo_espera_min) AS total_min
-    FROM hecho_seguimiento_fases
+    FROM marcadas
+    WHERE rn = 1
     GROUP BY servicio_id
-) t;
-
+)
+SELECT round(avg(total_min)::numeric, 1)                                          AS promedio_entrega_min,
+       round(percentile_cont(0.5) WITHIN GROUP (ORDER BY total_min)::numeric, 1)  AS mediana_entrega_min,
+       count(*)                                                                   AS servicios
+FROM tiempo_por_servicio;
 
 
 8) Tiempos de espera por cada fase / en que fase hay mas demoras
 
+WITH servicios_completos AS (
+    SELECT DISTINCT servicio_id
+    FROM hecho_seguimiento_fases f
+    JOIN dim_estado e ON f.estado_id = e.id
+    WHERE e.nombre_estado = 'Entregado en destino'
+),
+marcadas AS (
+    SELECT f.*,
+           row_number() OVER (
+               PARTITION BY f.servicio_id, f.estado_id
+               ORDER BY f.tiempo_espera_min NULLS LAST
+           ) AS rn
+    FROM hecho_seguimiento_fases f
+    WHERE f.servicio_id IN (SELECT servicio_id FROM servicios_completos)
+)
 SELECT e.nombre_estado,
        e.orden_secuencia,
-       round(avg(f.tiempo_espera_min)::numeric, 1) AS espera_promedio_min,
-       count(DISTINCT f.servicio_id)               AS servicios
-FROM hecho_seguimiento_fases f
-JOIN dim_estado e ON f.estado_id = e.id
+       round(avg(m.tiempo_espera_min) FILTER (WHERE m.rn = 1)::numeric, 1) AS promedio_sin_dup,
+       round(percentile_cont(0.5) WITHIN GROUP (ORDER BY m.tiempo_espera_min) FILTER (WHERE m.rn = 1)::numeric, 1) AS mediana_sin_dup,
+       count(*)                            AS total_con_duplicadas,
+       count(*) FILTER (WHERE m.rn > 1)    AS fases_duplicadas,
+       count(*) FILTER (WHERE m.rn = 1)    AS total_sin_duplicadas
+FROM marcadas m
+JOIN dim_estado e ON m.estado_id = e.id
 GROUP BY e.nombre_estado, e.orden_secuencia
-ORDER BY e.orden_secuencia;
+ORDER BY e.orden_secuencia NULLS LAST;
+
 
 9) Cuáles son las novedades que más se presentan durante la prestación del servicio?
 
