@@ -97,11 +97,14 @@ WHERE f.mensajero_id IS NOT NULL
 GROUP BY f.mensajero_id
 ORDER BY servicios DESC;
 6)------------------PREGUNTA 6
-select dim_sede.nombre_sede,count(*) from
-hecho_servicio join dim_sede
-on hecho_servicio.id_sede = dim_sede.sede_id
-GROUP BY dim_sede.nombre_sede
-ORDER BY COUNT(*) DESC;
+SELECT c.nombre_empresa,
+       s.nombre_sede,
+       count(*) AS num_servicios
+FROM hecho_servicio h
+JOIN dim_sede s ON h.id_sede = s.sede_id
+JOIN dim_cliente c ON h.id_cliente = c.id_cliente
+GROUP BY c.nombre_empresa, s.sede_id, s.nombre_sede
+ORDER BY num_servicios DESC;
 
 7) Tiempo promedio de entrega (solicitud -> cierre)
 
