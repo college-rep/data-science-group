@@ -1,10 +1,31 @@
-.idea
-*.txt
+# Configuracion con credenciales
 config.yml
-*.db
-test*
-*.csv
-*.pbix
-*.sql
+
+# Entornos virtuales
+venv/
+my_env/
+win_env/
+.venv/
+env/
+
+# Python
+__pycache__/
 *.pyc
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.idea/
+.vscode/
+
+# Sistema
+.DS_Store
+
+# Dumps y respaldos de base de datos
 *.dump
+*.db
+
+# Power BI
+*.pbix
