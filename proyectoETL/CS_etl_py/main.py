@@ -1,3 +1,15 @@
+"""
+ETL Fast and Safe - orquestador principal.
+
+Ejecuta la creacion de tablas de la bodega y los notebooks de dimensiones
+y hechos del modelo dimensional, en orden de dependencia.
+
+Uso:
+    python main.py              # ETL completo (limpia y recarga)
+    python main.py --solo-ddl   # solo crea las tablas de sqlscripts.yml
+    python main.py --no-limpiar # no trunca las tablas antes de cargar
+"""
+
 import sys
 import time
 from pathlib import Path
@@ -31,7 +43,8 @@ HECHOS = [
     "hecho_novedad.ipynb",
 ]
 
-
+# Tablas creadas por DDL cuyos notebooks cargan con if_exists='append'.
+# Se truncan antes de recargar para que el proceso sea re-ejecutable.
 TABLAS_A_LIMPIAR = [
     "dim_fecha",
     "dim_hora",
@@ -57,7 +70,7 @@ def crear_engines(config):
 
 
 def crear_tablas(config, etl_conn):
-
+    """Ejecuta los DDL de sqlscripts.yml para las tablas que aun no existen."""
     existentes = set(inspect(etl_conn).get_table_names())
 
     with open(SQLSCRIPTS_PATH, "r") as f:
@@ -111,8 +124,14 @@ def ejecutar_notebook(nombre):
         print(f"[OK]    {nombre}  ({time.time() - inicio:.1f}s)")
         return True
     except Exception as e:
-        mensaje = str(e).strip().split("\n")[-1][:120]
-        print(f"[ERROR] {nombre}: {mensaje}")
+        texto = str(e)
+        # Buscar la linea con el error real, no el enlace a la documentacion
+        lineas = [l.strip() for l in texto.split("\n") if l.strip()]
+        utiles = [l for l in lineas
+                  if ("Error" in l or "error" in l or "FATAL" in l)
+                  and "sqlalche.me" not in l and "Background on this" not in l]
+        mensaje = utiles[-1] if utiles else lineas[-1]
+        print(f"[ERROR] {nombre}: {mensaje[:200]}")
         return False
 
 
