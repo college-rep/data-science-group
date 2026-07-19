@@ -16,7 +16,8 @@ FROM mensajeria_estado;
 --select * from mensajeria_origenservicio;
 
 
-1)
+---------1)En qué meses del año los clientes solicitan más servicios de mensajería
+
 select dim_fecha.nombre_mes,count(*) from
 hecho_servicio join dim_fecha
 on hecho_servicio.fecha_solicitud = dim_fecha.fecha_completa
@@ -24,7 +25,8 @@ GROUP BY dim_fecha.nombre_mes;
 ORDER BY COUNT(*) DESC;
 
 
-2)
+---------2)Cuáles son los días donde más solicitudes hay.
+
 select dim_fecha.nombre_dia,count(*) from
 hecho_servicio join dim_fecha
 on hecho_servicio.fecha_solicitud = dim_fecha.fecha_completa
@@ -59,6 +61,7 @@ GROUP BY hora_del_dia
 ORDER BY hora_del_dia;
 
 4)------------------PREGUNTA 4
+---------Número de servicios solicitados por cliente y por mes
 select dim_cliente.nombre_empresa,count(*) from
 hecho_servicio join dim_cliente
 on hecho_servicio.id_cliente = dim_cliente.id_cliente
@@ -97,6 +100,8 @@ WHERE f.mensajero_id IS NOT NULL
 GROUP BY f.mensajero_id
 ORDER BY servicios DESC;
 6)------------------PREGUNTA 6
+---------Cuáles son las sedes que más servicios solicitan por cada cliente.
+
 select dim_sede.nombre_sede,count(*) from
 hecho_servicio join dim_sede
 on hecho_servicio.id_sede = dim_sede.sede_id
